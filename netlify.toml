@@ -1,0 +1,3 @@
+# Deploy: import this repo as a Netlify site and add the env vars from the README.
+[functions]
+  directory = "."
