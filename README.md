@@ -40,4 +40,17 @@ Set the Analyzed data-source id in `analyze.mts` (`DS_ID`).
 ## Security
 No API keys are in the code — all providers are read from environment variables at runtime.
 
+## One-click bookmarklet (with a comment)
+Prefer a button over the paste box? Make a bookmark that fires the current tab's URL at this
+endpoint. Add `&pop=1` for a tidy self-closing confirmation popup, and `&note=<text>` to
+attach your own comment — it's saved to the row's **Notes** field (a property added for this):
+
+```
+GET /analyze?key=<CATCHER_KEY>&url=<link>&note=<your comment>&pop=1
+```
+
+The bundled bookmarklet opens a small window showing what it caught plus a comment box:
+**Enter** saves with your comment, **Esc** saves without. Your iPhone POST shortcut is
+unaffected (it uses the JSON response).
+
 MIT © Afnan

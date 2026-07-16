@@ -182,6 +182,19 @@ function formPage(key: string, msg = "") {
 </form><p style="color:#9a9">${msg}</p></body>`, { headers: { "Content-Type": "text/html; charset=utf-8" } });
 }
 
+// One-click bookmarklet mode (pop=1): a self-closing confirmation popup, like /park.
+function esc(s: string) { return (s || "").replace(/[<>&"]/g, c => (({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" } as Record<string, string>)[c])); }
+function popup(ok: boolean, head: string, line: string, autoMs = 2600) {
+  const bg = ok ? "#0f172a" : "#7f1d1d";
+  const auto = ok ? `<scr` + `ipt>setTimeout(function(){try{window.close()}catch(e){}},${autoMs})</scr` + `ipt>` : "";
+  return new Response(`<!doctype html><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1">
+<title>Deep Analyzer</title><body style="margin:0;font-family:-apple-system,sans-serif;background:${bg};color:#eee;display:flex;flex-direction:column;justify-content:center;align-items:center;height:100vh;text-align:center;padding:16px">
+<div style="font-size:20px;margin-bottom:8px">${head}</div>
+<div style="font-size:14px;opacity:.9;max-width:360px">${esc(line)}</div>
+<div style="font-size:12px;opacity:.5;margin-top:10px">${ok ? "closes itself — full breakdown is in your Deep Analyzer page" : "close this and try again"}</div>
+${auto}</body>`, { headers: { "Content-Type": "text/html; charset=utf-8" } });
+}
+
 export default async (req: Request) => {
   const u = new URL(req.url);
   const params: Record<string, string> = Object.fromEntries(u.searchParams);
@@ -199,9 +212,11 @@ export default async (req: Request) => {
 
   const TOKEN = Netlify.env.get("NOTION_TOKEN") || "";
   const wantsUi = params.ui === "1";
+  const wantsPop = params.pop === "1";
   const reply = (ok: boolean, message: string) =>
-    wantsUi ? formPage(params.key, (ok ? "✅ " : "❌ ") + message)
-            : Response.json({ ok, message }, { status: ok ? 200 : 500 });
+    wantsPop ? popup(ok, ok ? "🧠 Added to Deep Analyzer" : "❌ Couldn’t analyze", message, 2600)
+    : wantsUi ? formPage(params.key, (ok ? "✅ " : "❌ ") + message)
+    : Response.json({ ok, message }, { status: ok ? 200 : 500 });
 
   if (!TOKEN) return reply(false, "NOTION_TOKEN env var is not set.");
 
@@ -256,6 +271,7 @@ ${body}`;
     const effort = clamp(String(a.effort), EFFORTS, "30 min");
     const keyFacts = arr(a.key_facts), insights = arr(a.insights), nextSteps = arr(a.next_steps);
 
+    const userNote = (params.note || "").trim();
     const page = await notion("pages", {
       parent: { type: "data_source_id", data_source_id: DS_ID },
       properties: {
@@ -264,6 +280,7 @@ ${body}`;
         Summary: txt(String(a.summary || "")),
         "Next Step": txt(nextSteps[0] || ""),
         Relevance: txt(String(a.relevance || "")),
+        Notes: txt(userNote),
         Status: sel("New"),
         URL: { url: parsedUrl.href },
       },
